@@ -1,0 +1,94 @@
+/* 根主题变量统一描述后台骨架的颜色、圆角、阴影与布局基线。 */
+:root {
+  --background: #f5f1e8;
+  --foreground: #1d1a16;
+  --muted: #6c6558;
+  --surface: rgba(255, 252, 245, 0.82);
+  --surface-strong: #fffdfa;
+  --surface-alt: #ebe4d7;
+  --border: rgba(77, 61, 31, 0.14);
+  --ring: rgba(13, 148, 136, 0.28);
+  --accent: #0f766e;
+  --accent-foreground: #effcf8;
+  --accent-soft: rgba(15, 118, 110, 0.12);
+  --warning: #b45309;
+  --warning-soft: rgba(180, 83, 9, 0.14);
+  --success: #166534;
+  --success-soft: rgba(22, 101, 52, 0.14);
+  --danger: #b42318;
+  --danger-soft: rgba(180, 35, 24, 0.14);
+  --shadow: 0 28px 90px rgba(64, 49, 20, 0.14);
+  --radius: 24px;
+  --sidebar-width: 19rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-surface-alt: var(--surface-alt);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --radius-sm: calc(var(--radius) - 12px);
+  --radius-md: calc(var(--radius) - 8px);
+  --radius-lg: calc(var(--radius) - 4px);
+  --radius-xl: var(--radius);
+  --font-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", "Consolas", monospace;
+}
+
+html {
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.14), transparent 30%),
+    radial-gradient(circle at 85% 12%, rgba(180, 83, 9, 0.12), transparent 24%),
+    linear-gradient(180deg, #f9f6ef 0%, #f2ece0 100%);
+}
+
+body {
+  color: var(--foreground);
+}
+
+::selection {
+  background: rgba(15, 118, 110, 0.18);
+}
+
+/* 管理后台的光晕背景用于打破纯色平面，避免默认模板感。 */
+.admin-ambient::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(15, 118, 110, 0.1), transparent 30%),
+    radial-gradient(circle at 100% 0%, rgba(180, 83, 9, 0.1), transparent 22%),
+    radial-gradient(circle at 50% 100%, rgba(29, 78, 216, 0.06), transparent 30%);
+  opacity: 0.9;
+}
+
+/* 渐进入场动画仅用于骨架首屏，避免过多花哨动效。 */
+.fade-enter {
+  animation: fade-enter 560ms ease-out both;
+}
+
+@keyframes fade-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}

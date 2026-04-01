@@ -60,10 +60,6 @@
 ### 3.1 本期必须支持
 
 - 运营后台按条件分页查询小龙虾用户
-- 运营后台查看小龙虾用户详情
-- 运营后台创建小龙虾用户基础档案
-- 运营后台更新小龙虾用户基础档案
-- 运营后台停用小龙虾用户
 - 运营后台按条件分页查询大龙虾用户
 - 运营后台查看大龙虾用户详情
 - 运营后台创建大龙虾用户基础档案与初始槽位
@@ -77,6 +73,10 @@
 
 ### 3.2 本期不做
 
+- 小龙虾用户详情
+- 小龙虾用户新增
+- 小龙虾用户更新
+- 小龙虾用户删除/停用
 - 自动审批流程
 - 批量导入导出
 - 复杂报表
@@ -151,204 +151,94 @@
 
 | 模块 | 主写表 | 扩展读取表 | 说明 |
 | --- | --- | --- | --- |
-| 小龙虾用户 | `public.users`、`public.user_lobster_profiles`、`public.account_links` | `public.follower_key_records`、`public.follower_node_bindings`、`public.user_lobster_binding_requests`、`public.user_auth_identities` | 用户主档与 Lobster 基础档案 |
+| 小龙虾用户 | `无（一期只读）` | `public.users`、`public.user_lobster_profiles`、`public.account_links`、`public.follower_node_bindings`、`public.mirror_configs` | 小龙虾列表聚合查询 |
 | 大龙虾用户 | `public.users`、`public.lobster_slots` | `public.node_key_records`、`public.asset_node`、`public.model_license_key_records`、`public.activation_revenue_records` | 用户主档与槽位归属 |
 | 大龙虾 Key | `public.node_key_records` | `public.unified_key_registry`、`public.model_license_key_records`、`public.asset_node`、`public.key_application_requests` | 节点 key 主记录 |
 
 ## 6. 模块一：小龙虾用户管理
 
-> 详细后端可执行规格见：[小龙虾用户 CRUD 代码规格](/Users/leon/Desktop/my/operation_admin/.trellis/spec/backend/operator-follower-user-crud.md)
+> 详细后端可执行规格见：[小龙虾用户列表代码规格](/Users/leon/Desktop/my/operation_admin/.trellis/spec/backend/operator-follower-user-crud.md)
 
 ## 6.1 模块目标
 
-运营可以查询、创建、修改、停用小龙虾用户，并查看其 Lobster 档案、账户关联、follower key 和绑定信息。
+一期只提供小龙虾用户列表查询，用于运营查看小龙虾用户经营状态。
+
+页面只显示以下 6 个字段：
+
+- 用户ID
+- 账户状态
+- 策略状态
+- 绑定状态
+- 责任域
+- 更新时间
 
 ## 6.2 主接口列表
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/admin/v1/follower-users` | 小龙虾用户列表 |
-| `GET` | `/admin/v1/follower-users/{user_id}` | 小龙虾用户详情 |
-| `POST` | `/admin/v1/follower-users` | 创建小龙虾用户 |
-| `PATCH` | `/admin/v1/follower-users/{user_id}` | 更新小龙虾用户 |
-| `DELETE` | `/admin/v1/follower-users/{user_id}` | 停用小龙虾用户 |
 
 ## 6.3 列表接口需求
 
 ### 6.3.1 筛选条件
 
-- `user_id`
-- `external_user_id`
-- `display_name`
-- `lobster_user_id`
-- `user_status`
-- `link_status`
-- `tier`
-- `has_active_key`
-- `has_active_binding`
+- `keyword`
+- `accountStatus`
+- `strategyStatus`
+- `bindingStatus`
+- `responsibilityDomain`
+- `updatedFrom`
+- `updatedTo`
 
 ### 6.3.2 返回字段
 
-- `user_id`
-- `external_user_id`
-- `display_name`
-- `user_status`
-- `preferred_channel`
-- `locale`
-- `tier`
-- `slot_cap`
-- `lobster_user_id`
-- `link_status`
-- `active_key_count`
-- `active_binding_count`
-- `last_bound_at_ts`
-- `created_at`
-- `updated_at`
+- `userId`
+- `accountStatus`
+- `strategyStatus`
+- `bindingStatus`
+- `responsibilityDomain`
+- `updatedAt`
 
 ### 6.3.3 查询表与查询口径
 
-主查询表：
+候选用户集合来源：
 
-- `public.users u`
-
-左连接表：
-
-- `public.user_lobster_profiles up`，按 `up.user_id = u.id`
-- `public.account_links al`，按 `al.portal_user_id = u.id`
-
-统计表：
-
-- `public.follower_key_records fkr`，按 `fkr.user_id = u.id`
-- `public.follower_node_bindings fnb`，按 `fnb.user_id = u.id`
-
-建议查询策略：
-
-1. 以 `users` 为主表
-2. 使用 `user_lobster_profiles` 或 `account_links` 作为“小龙虾用户”的识别条件
-3. `follower_key_records` 聚合出 key 数量和最近过期时间
-4. `follower_node_bindings` 聚合出绑定数量和最近绑定时间
-
-建议伪 SQL：
-
-```sql
-SELECT
-  u.id,
-  u.external_user_id,
-  u.display_name,
-  u.status,
-  up.tier,
-  up.slot_cap,
-  al.lobster_user_id,
-  al.link_status,
-  key_stat.active_key_count,
-  bind_stat.active_binding_count,
-  bind_stat.last_bound_at_ts
-FROM public.users u
-LEFT JOIN public.user_lobster_profiles up ON up.user_id = u.id
-LEFT JOIN public.account_links al ON al.portal_user_id = u.id
-LEFT JOIN (...) key_stat ON key_stat.user_id = u.id
-LEFT JOIN (...) bind_stat ON bind_stat.user_id = u.id
-WHERE up.user_id IS NOT NULL OR al.portal_user_id IS NOT NULL;
-```
-
-## 6.4 详情接口需求
-
-详情页需要返回 5 个信息区块：
-
-1. 用户基础信息：来自 `public.users`
-2. Lobster 档案：来自 `public.user_lobster_profiles`
-3. Lobster 账户关联：来自 `public.account_links`
-4. follower key 列表：来自 `public.follower_key_records`
-5. 节点绑定列表：来自 `public.follower_node_bindings` 和 `public.user_lobster_binding_requests`
-
-## 6.5 创建接口需求
-
-### 6.5.1 写入表
-
-- `public.users`
 - `public.user_lobster_profiles`
-- `public.account_links`，可选
+- `public.account_links`
+- `public.follower_node_bindings`
+- `public.mirror_configs`
 
-### 6.5.2 入参
+展示字段口径：
 
-| 字段 | 是否必填 | 写入表 | 说明 |
-| --- | --- | --- | --- |
-| `external_user_id` | 是 | `users` | 外部用户 ID，必须唯一 |
-| `display_name` | 是 | `users` | 用户昵称 |
-| `status` | 否 | `users` | 默认 `ACTIVE` |
-| `preferred_channel` | 否 | `users` | 偏好通知渠道 |
-| `locale` | 否 | `users` | 地区 |
-| `slot_cap` | 是 | `user_lobster_profiles` | Lobster 槽位上限 |
-| `tier` | 是 | `user_lobster_profiles` | Lobster 等级 |
-| `profile_meta_json` | 否 | `user_lobster_profiles` | 档案扩展字段 |
-| `lobster_user_id` | 否 | `account_links` | Lobster 账户 ID |
-| `link_status` | 否 | `account_links` | 默认 `LINKED` |
-| `account_link_meta_json` | 否 | `account_links` | 账户关联扩展字段 |
+- `userId`：`public.users.external_user_id`
+- `accountStatus`：`public.account_links.link_status`，无记录返回 `UNLINKED`
+- `strategyStatus`：由 `public.mirror_configs` 派生
+- `bindingStatus`：`public.follower_node_bindings.status`，无记录返回 `UNBOUND`
+- `responsibilityDomain`：优先从 `public.user_lobster_profiles.meta_json` 读取，其次从 `public.account_links.meta_json` 读取
+- `updatedAt`：取 `users`、`user_lobster_profiles`、`account_links`、`follower_node_bindings`、`mirror_configs` 中最大 `updated_at`
 
-### 6.5.3 校验规则
+查询约束：
 
-- `external_user_id` 不能为空，且需满足 `users.external_user_id` 唯一约束
-- `slot_cap` 必须大于等于 `0`
-- `tier` 不能为空
-- 如果传入 `lobster_user_id`，则必须同时写入 `account_links`
+- 必须先构造候选用户集合，不能直接扫全量 `public.users`
+- `public.account_links`、`public.follower_node_bindings`、`public.mirror_configs` 都按用户唯一，可直接左连接
+- 不读取 `public.follower_key_records` 和 `public.user_lobster_binding_requests`
 
-### 6.5.4 创建逻辑
+## 6.4 一期不做
 
-1. 插入 `users`
-2. 插入 `user_lobster_profiles`
-3. 如果传入 `lobster_user_id`，插入 `account_links`
-4. 返回完整详情
+- 详情接口
+- 新增接口
+- 更新接口
+- 删除/停用接口
+- follower key 明细
+- 绑定申请明细
 
-## 6.6 更新接口需求
+## 6.5 验收标准
 
-### 6.6.1 允许修改字段
-
-- `users.display_name`
-- `users.status`
-- `users.preferred_channel`
-- `users.locale`
-- `user_lobster_profiles.slot_cap`
-- `user_lobster_profiles.tier`
-- `user_lobster_profiles.meta_json`
-- `account_links.lobster_user_id`
-- `account_links.link_status`
-- `account_links.meta_json`
-
-### 6.6.2 更新规则
-
-- `user_lobster_profiles` 若不存在，不允许直接 PATCH 更新，需先补建
-- `account_links` 若不存在，且请求中传入账户关联字段，则执行补建
-- follower key 与 follower 绑定在本接口中只读，不允许直接修改历史记录
-
-## 6.7 删除接口需求
-
-### 6.7.1 删除语义
-
-执行逻辑删除，不物理删数据：
-
-- 将 `users.status` 更新为停用状态
-- 若存在 `account_links`，将 `link_status` 更新为取消关联状态
-
-### 6.7.2 不自动处理
-
-以下数据本期不在删除接口中级联修改：
-
-- `follower_key_records`
-- `follower_node_bindings`
-- `user_lobster_binding_requests`
-
-原因：
-
-- 这些表更适合保留历史轨迹
-- 当前库结构中缺少清晰的统一撤销流程定义
-
-## 6.8 验收标准
-
-- 可以按 `external_user_id`、`display_name`、`lobster_user_id` 查询用户
-- 创建后可以在列表页查到用户
-- 更新后详情接口立即反映新值
-- 删除后用户不再出现在默认启用列表中
-- 所有写操作均有审计日志
+- 列表页只返回 6 个字段，不额外返回用户详情字段
+- 只要用户存在于候选表任意一张，就必须能进入列表
+- 只有 `mirror_configs` 的用户也必须能查出
+- 同一用户同时存在于多张候选表时只能返回 1 行
+- `responsibilityDomain` 不存在时返回 `null`
 
 ## 7. 模块二：大龙虾用户管理
 

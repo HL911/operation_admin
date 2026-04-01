@@ -1,171 +1,112 @@
-# 小龙虾用户 CRUD 代码规格
+# 小龙虾用户列表规格
 
-> 场景：运营后台管理小龙虾用户。
+> 场景：运营后台查询小龙虾用户列表。
 >
-> 本文档是可执行代码规格，面向后端开发实现。统一响应格式、分页结构、错误处理方式必须同时遵循 [错误处理](./error-handling.md)。
+> 当前版本为一期精简版，只做列表查询，只返回 6 个展示字段，不做详情、不做新增、不做编辑、不做删除。
 
 ---
 
-## Scenario: 小龙虾用户后台 CRUD
+## Scenario: 小龙虾用户列表查询
 
 ### 1. Scope / Trigger
 
-- Trigger：运营后台需要对“小龙虾用户”执行列表查询、详情查询、创建、更新、停用。
-- Scope：只覆盖小龙虾用户主档案与基础 Lobster 关联信息。
-- Mutable Tables：
-  - `public.users`
-  - `public.user_lobster_profiles`
-  - `public.account_links`
-- Read Only Tables：
-  - `public.follower_key_records`
-  - `public.follower_node_bindings`
-  - `public.user_lobster_binding_requests`
-  - `public.user_auth_identities`
-  - `public.user_sessions`
-- 不在本规格内的内容：
-  - follower key 的签发、撤销、补发
-  - follower 节点绑定关系的直接修改
-  - 绑定申请审批流
+- Trigger：运营后台需要查看小龙虾用户基础经营状态。
+- Scope：只提供列表查询接口。
+- Not In Scope：
+  - 详情接口
+  - 创建接口
+  - 更新接口
+  - 删除接口
+  - follower key 明细
+  - 绑定申请明细
 
-### 1.1 业务定义
+### 1.1 一期页面只显示字段
 
-当前库表下，“小龙虾用户”按以下规则识别：
+小龙虾列表页只显示以下 6 个字段：
 
-- 满足任一条件即可进入模块检索范围：
-  - 在 `public.user_lobster_profiles` 中存在记录
-  - 在 `public.account_links` 中存在记录
-  - 在 `public.follower_key_records` 中存在记录
-  - 在 `public.follower_node_bindings` 中存在记录
-  - 在 `public.user_lobster_binding_requests` 中存在记录
+1. 用户ID
+2. 账户状态
+3. 策略状态
+4. 绑定状态
+5. 责任域
+6. 更新时间
 
-当前模块的“主档案”定义为：
+### 1.2 数据来源约束
 
-- `public.users` 中的用户基础信息
-- `public.user_lobster_profiles` 中的 Lobster 配置档案
-- `public.account_links` 中的当前有效账户关联
+本模块必须基于现有表做聚合，不新增库表，不修改现有 schema。
 
-### 1.2 一期写入边界
+允许读取的表：
 
-一期仅允许通过本模块写入或更新以下字段：
+- `public.users`
+- `public.user_lobster_profiles`
+- `public.account_links`
+- `public.follower_node_bindings`
+- `public.mirror_configs`
 
-- `users.external_user_id`
-- `users.display_name`
-- `users.status`
-- `users.preferred_channel`
-- `users.locale`
-- `user_lobster_profiles.slot_cap`
-- `user_lobster_profiles.tier`
-- `user_lobster_profiles.meta_json`
-- `account_links.lobster_user_id`
-- `account_links.link_status`
-- `account_links.meta_json`
-- `account_links.last_sync_at`
+本模块不读取以下表作为主口径：
 
-以下数据只读：
+- `public.follower_key_records`
+- `public.user_lobster_binding_requests`
 
-- follower key 历史
-- follower 节点绑定历史
-- Lobster 绑定申请历史
+原因：
+
+- 当前一期展示字段不需要 key 和申请明细
+- 加入这些表会扩大候选用户范围，导致列表噪音增加
 
 ---
 
 ### 2. Signatures
 
-### 2.1 HTTP Endpoints
+### 2.1 HTTP Endpoint
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/admin/v1/follower-users` | 查询小龙虾用户分页列表 |
-| `GET` | `/admin/v1/follower-users/{userId}` | 查询小龙虾用户详情 |
-| `POST` | `/admin/v1/follower-users` | 创建小龙虾用户 |
-| `PATCH` | `/admin/v1/follower-users/{userId}` | 更新小龙虾用户 |
-| `DELETE` | `/admin/v1/follower-users/{userId}` | 停用小龙虾用户 |
 
-### 2.2 Handler / Service / Repository 建议签名
-
-```go
-// handler
-func (h *FollowerUserHandler) List(c *gin.Context)
-func (h *FollowerUserHandler) Get(c *gin.Context)
-func (h *FollowerUserHandler) Create(c *gin.Context)
-func (h *FollowerUserHandler) Update(c *gin.Context)
-func (h *FollowerUserHandler) Delete(c *gin.Context)
-
-// service
-type FollowerUserService interface {
-    List(ctx context.Context, req ListFollowerUsersRequest) (PageResult[FollowerUserListItem], error)
-    Get(ctx context.Context, userID int64) (*FollowerUserDetail, error)
-    Create(ctx context.Context, req CreateFollowerUserRequest) (*FollowerUserDetail, error)
-    Update(ctx context.Context, userID int64, req UpdateFollowerUserRequest) (*FollowerUserDetail, error)
-    Delete(ctx context.Context, userID int64, req DeleteFollowerUserRequest) error
-}
-```
-
-### 2.3 Query Params Signature
-
-列表接口统一采用小驼峰命名：
+### 2.2 Query Params
 
 ```text
-GET /admin/v1/follower-users?pageNum=1&pageSize=20&keyword=张三&status=ACTIVE&tier=BASIC&hasActiveKey=true
+GET /admin/v1/follower-users?pageNum=1&pageSize=20&keyword=lobster_u_10001&accountStatus=LINKED&strategyStatus=RUNNING&bindingStatus=BOUND&responsibilityDomain=cn-east
 ```
 
 字段定义：
 
 - `pageNum`：默认 `1`
 - `pageSize`：默认 `20`，最大 `100`
-- `keyword`：支持匹配 `externalUserId`、`displayName`、`lobsterUserId`
-- `status`：用户状态
-- `linkStatus`：账户关联状态
-- `tier`：Lobster 等级
-- `hasActiveKey`：是否有有效 follower key
-- `hasActiveBinding`：是否有有效节点绑定
-- `createdFrom`
-- `createdTo`
+- `keyword`：支持匹配用户 ID
+- `accountStatus`
+- `strategyStatus`
+- `bindingStatus`
+- `responsibilityDomain`
+- `updatedFrom`
+- `updatedTo`
 - `sortBy`：默认 `updatedAt`
 - `sortOrder`：默认 `desc`
+
+### 2.3 Handler / Service 建议签名
+
+```go
+type FollowerUserListService interface {
+    List(ctx context.Context, req ListFollowerUsersRequest) (PageResult[FollowerUserListItem], error)
+}
+```
 
 ---
 
 ### 3. Contracts
 
-### 3.1 当前有效账户关联选择规则
+### 3.1 用户候选集合
 
-`public.account_links` 当前没有 `(portal_user_id)` 唯一约束，因此查询时禁止直接简单 `LEFT JOIN`。
+小龙虾列表不能直接扫全量 `users`，必须先构造候选用户集合。
 
-当前有效账户关联的选择规则固定为：
+候选规则：
 
-1. 优先取 `link_status = 'LINKED'` 的记录
-2. 若存在多条 `LINKED`，取 `updated_at` 最新的一条
-3. 若不存在 `LINKED`，取 `updated_at` 最新的一条历史记录
-4. 若 `updated_at` 相同，则取 `id` 最大的一条
+- 在 `public.user_lobster_profiles` 中存在记录
+- 或在 `public.account_links` 中存在记录
+- 或在 `public.follower_node_bindings` 中存在记录
+- 或在 `public.mirror_configs` 中存在记录
 
 推荐 SQL：
-
-```sql
-WITH ranked_account_links AS (
-  SELECT
-    al.*,
-    ROW_NUMBER() OVER (
-      PARTITION BY al.portal_user_id
-      ORDER BY
-        CASE WHEN al.link_status = 'LINKED' THEN 0 ELSE 1 END,
-        al.updated_at DESC,
-        al.id DESC
-    ) AS rn
-  FROM public.account_links al
-)
-SELECT *
-FROM ranked_account_links
-WHERE rn = 1;
-```
-
-### 3.2 列表查询 Contract
-
-#### 3.2.1 候选用户集合
-
-列表必须以候选用户集合作为入口，不能只靠 `user_lobster_profiles` 或 `account_links`。
-
-推荐候选集：
 
 ```sql
 WITH candidate_users AS (
@@ -173,270 +114,205 @@ WITH candidate_users AS (
   UNION
   SELECT portal_user_id AS user_id FROM public.account_links
   UNION
-  SELECT user_id FROM public.follower_key_records
-  UNION
   SELECT user_id FROM public.follower_node_bindings
   UNION
-  SELECT user_id FROM public.user_lobster_binding_requests
+  SELECT user_id FROM public.mirror_configs
 )
 ```
 
-#### 3.2.2 列表返回对象
+### 3.2 展示字段映射
 
-```json
-{
-  "userId": 10001,
-  "externalUserId": "lobster_u_10001",
-  "displayName": "张三",
-  "status": "ACTIVE",
-  "preferredChannel": "whatsapp",
-  "locale": "zh-CN",
-  "tier": "BASIC",
-  "slotCap": 2,
-  "lobsterUserId": "lb_90001",
-  "linkStatus": "LINKED",
-  "activeKeyCount": 1,
-  "activeBindingCount": 1,
-  "lastBoundAtTs": 1775104225000,
-  "createdAt": "2026-04-01 14:30:00",
-  "updatedAt": "2026-04-01 15:00:00"
-}
+| 展示字段 | API 字段 | 来源 | 规则 |
+| --- | --- | --- | --- |
+| 用户ID | `userId` | `users.external_user_id` | 页面展示固定取外部用户 ID，不展示内部自增主键 |
+| 账户状态 | `accountStatus` | `account_links.link_status` | 取“当前有效账户关联”状态；无记录时返回 `UNLINKED` |
+| 策略状态 | `strategyStatus` | `mirror_configs` 派生 | 按策略状态派生规则计算 |
+| 绑定状态 | `bindingStatus` | `follower_node_bindings.status` | 取“当前有效绑定记录”状态；无记录时返回 `UNBOUND` |
+| 责任域 | `responsibilityDomain` | `user_lobster_profiles.meta_json` 或 `account_links.meta_json` | 按责任域提取规则读取；无值时返回 `null` |
+| 更新时间 | `updatedAt` | 多表派生 | 取用户相关关键表的最新更新时间 |
+
+### 3.3 账户关联读取规则
+
+`public.account_links` 在数据库中存在唯一约束 `uq_account_links_portal_user UNIQUE (portal_user_id)`。
+
+固定规则：
+
+1. 一个 `portal_user_id` 最多只有 1 条账户关联记录
+2. 查询时允许直接按 `al.portal_user_id = u.id` 左连接
+3. 若无记录，`accountStatus` 返回 `UNLINKED`
+4. 一期不做历史账户关联择优逻辑
+
+推荐 SQL：
+
+```sql
+LEFT JOIN public.account_links al
+  ON al.portal_user_id = u.id
 ```
 
-#### 3.2.3 列表字段来源
+### 3.4 当前有效绑定规则
 
-| API 字段 | 来源 |
-| --- | --- |
-| `userId` | `users.id` |
-| `externalUserId` | `users.external_user_id` |
-| `displayName` | `users.display_name` |
-| `status` | `users.status` |
-| `preferredChannel` | `users.preferred_channel` |
-| `locale` | `users.locale` |
-| `tier` | `user_lobster_profiles.tier` |
-| `slotCap` | `user_lobster_profiles.slot_cap` |
-| `lobsterUserId` | 当前有效 `account_links.lobster_user_id` |
-| `linkStatus` | 当前有效 `account_links.link_status` |
-| `activeKeyCount` | `follower_key_records` 聚合 |
-| `activeBindingCount` | `follower_node_bindings` 聚合 |
-| `lastBoundAtTs` | `follower_node_bindings.bound_at_ts` 最大值 |
-| `createdAt` | `users.created_at` |
-| `updatedAt` | `users.updated_at` |
+`public.follower_node_bindings` 在数据库中存在唯一约束 `uq_follower_node_binding_user UNIQUE (user_id)`。
 
-#### 3.2.4 有效 key 统计规则
+固定规则：
 
-有效 key 默认统计以下状态：
+1. 一个 `user_id` 最多只有 1 条绑定记录
+2. 查询时允许直接按 `fnb.user_id = u.id` 左连接
+3. 若有记录，`bindingStatus` 直接取 `fnb.status`
+4. 若无记录，返回 `UNBOUND`
 
-- `ISSUED`
-- `BOUND`
-- `ACTIVE`
+推荐 SQL：
 
-实现时若现网状态集不同，以配置常量维护，不允许散落在 SQL 字符串中。
-
-#### 3.2.5 有效绑定统计规则
-
-有效绑定默认统计以下状态：
-
-- `BOUND`
-- `ACTIVE`
-
-### 3.3 详情查询 Contract
-
-详情接口 `data` 必须返回以下结构：
-
-```json
-{
-  "basic": {
-    "userId": 10001,
-    "externalUserId": "lobster_u_10001",
-    "displayName": "张三",
-    "status": "ACTIVE",
-    "preferredChannel": "whatsapp",
-    "locale": "zh-CN",
-    "createdAt": "2026-04-01 14:30:00",
-    "updatedAt": "2026-04-01 15:00:00"
-  },
-  "profile": {
-    "profileId": 21,
-    "slotCap": 2,
-    "tier": "BASIC",
-    "meta": {}
-  },
-  "accountLink": {
-    "id": 31,
-    "lobsterUserId": "lb_90001",
-    "linkStatus": "LINKED",
-    "linkedAt": "2026-04-01 14:32:00",
-    "lastSyncAt": "2026-04-01 15:10:00",
-    "meta": {}
-  },
-  "keySummary": {
-    "total": 2,
-    "active": 1,
-    "latestExpireAtTs": 1776104225000
-  },
-  "bindingSummary": {
-    "total": 2,
-    "active": 1,
-    "lastBoundAtTs": 1775104225000
-  },
-  "keys": [],
-  "bindings": [],
-  "bindingRequests": [],
-  "authIdentities": []
-}
+```sql
+LEFT JOIN public.follower_node_bindings fnb
+  ON fnb.user_id = u.id
 ```
 
-详情接口默认返回：
+### 3.5 策略状态派生规则
 
-- `keys`：最近 `20` 条 follower key，按 `updated_at DESC`
-- `bindings`：最近 `20` 条绑定记录，按 `updated_at DESC`
-- `bindingRequests`：最近 `20` 条绑定申请，按 `updated_at DESC`
-- `authIdentities`：全部身份记录，按 `id DESC`
+策略状态来源于 `public.mirror_configs`，不是直接存储字段，而是计算字段。
 
-### 3.4 创建 Contract
+固定派生规则：
 
-#### 3.4.1 Request Body
-
-```json
-{
-  "externalUserId": "lobster_u_10001",
-  "displayName": "张三",
-  "status": "ACTIVE",
-  "preferredChannel": "whatsapp",
-  "locale": "zh-CN",
-  "profile": {
-    "slotCap": 2,
-    "tier": "BASIC",
-    "meta": {}
-  },
-  "accountLink": {
-    "lobsterUserId": "lb_90001",
-    "linkStatus": "LINKED",
-    "lastSyncAt": "2026-04-01 15:10:00",
-    "meta": {}
-  }
-}
+```text
+无 mirror_configs 记录         -> UNCONFIGURED
+enabled = false               -> DISABLED
+risk_circuit_open = true      -> RISK_HOLD
+stop_pending_settlement = true -> STOPPING
+enabled = true                -> RUNNING
+其他未知组合                  -> UNKNOWN
 ```
 
-#### 3.4.2 Request Rules
+推荐 SQL：
 
-- `externalUserId`：必填，唯一
-- `displayName`：必填，长度 `1..120`
-- `status`：可选，默认 `ACTIVE`
-- `preferredChannel`：可选
-- `locale`：可选
-- `profile`：必填
-- `profile.slotCap`：必填，`>= 0`
-- `profile.tier`：必填
-- `accountLink`：可选
-- `accountLink.lobsterUserId`：若传入 `accountLink`，则必填
-- `accountLink.linkStatus`：可选，默认 `LINKED`
-
-#### 3.4.3 DB Write Sequence
-
-必须在单事务内执行：
-
-1. 插入 `public.users`
-2. 插入 `public.user_lobster_profiles`
-3. 若有 `accountLink`，插入 `public.account_links`
-4. 记录审计日志
-
-#### 3.4.4 Response Contract
-
-- 成功后返回详情接口同结构对象
-- `message` 建议固定为 `创建成功`
-
-### 3.5 更新 Contract
-
-#### 3.5.1 Request Body
-
-PATCH 采用部分更新，未传字段表示不变：
-
-```json
-{
-  "displayName": "张三（新）",
-  "status": "ACTIVE",
-  "preferredChannel": "whatsapp",
-  "profile": {
-    "slotCap": 3,
-    "tier": "ADVANCED",
-    "meta": {
-      "operatorRemark": "人工升级"
-    }
-  },
-  "accountLink": {
-    "lobsterUserId": "lb_90002",
-    "linkStatus": "LINKED",
-    "lastSyncAt": "2026-04-01 16:00:00",
-    "meta": {}
-  }
-}
+```sql
+CASE
+  WHEN mc.user_id IS NULL THEN 'UNCONFIGURED'
+  WHEN mc.enabled = false THEN 'DISABLED'
+  WHEN mc.risk_circuit_open = true THEN 'RISK_HOLD'
+  WHEN mc.stop_pending_settlement = true THEN 'STOPPING'
+  WHEN mc.enabled = true THEN 'RUNNING'
+  ELSE 'UNKNOWN'
+END AS strategy_status
 ```
 
-#### 3.5.2 PATCH 语义
+### 3.6 责任域提取规则
 
-- 未传字段：不修改
-- 传入对象但对象内缺失字段：对象内缺失字段不修改
-- 本期不支持通过 `null` 表示清空字段
-- 需要解除 Lobster 关联时，使用：
-  - `accountLink.linkStatus = "UNLINKED"`
+当前数据库中没有独立的“责任域”结构化字段，一期按以下优先级提取：
 
-#### 3.5.3 DB Update Sequence
+1. `user_lobster_profiles.meta_json ->> 'responsibilityDomain'`
+2. `user_lobster_profiles.meta_json ->> 'ownerDomain'`
+3. `account_links.meta_json::jsonb ->> 'responsibilityDomain'`
+4. `account_links.meta_json::jsonb ->> 'ownerDomain'`
+5. 都不存在则返回 `null`
 
-必须在单事务内执行：
+推荐 SQL：
 
-1. `SELECT public.users ... FOR UPDATE`
-2. 更新 `public.users`
-3. `SELECT public.user_lobster_profiles ... FOR UPDATE`
-4. 更新 `public.user_lobster_profiles`
-5. 若请求中带 `accountLink`：
-   - 查找当前有效 `account_links` 记录并 `FOR UPDATE`
-   - 找到则更新
-   - 未找到则插入一条新记录
-6. 记录审计日志
-
-### 3.6 删除 Contract
-
-#### 3.6.1 Request Body
-
-```json
-{
-  "reason": "人工停用"
-}
+```sql
+COALESCE(
+  up.meta_json ->> 'responsibilityDomain',
+  up.meta_json ->> 'ownerDomain',
+  NULLIF(BTRIM(al.meta_json), '')::jsonb ->> 'responsibilityDomain',
+  NULLIF(BTRIM(al.meta_json), '')::jsonb ->> 'ownerDomain'
+) AS responsibility_domain
 ```
 
-#### 3.6.2 Delete 语义
+实现要求：
 
-`DELETE /admin/v1/follower-users/{userId}` 在本模块中表示“逻辑停用”：
+- 若 `account_links.meta_json` 为空字符串或只有空白字符，不允许直接强转 `jsonb`
+- 必须使用 `NULLIF(BTRIM(al.meta_json), '')::jsonb`
 
-1. `users.status` 更新为 `DISABLED`
-2. 当前有效 `account_links` 若存在，则更新 `link_status = 'UNLINKED'`
-3. 不修改：
-   - `follower_key_records`
-   - `follower_node_bindings`
-   - `user_lobster_binding_requests`
+### 3.7 更新时间规则
 
-#### 3.6.3 Delete Response
+更新时间不是单表字段，固定取以下时间的最大值：
+
+- `users.updated_at`
+- `user_lobster_profiles.updated_at`
+- 当前有效 `account_links.updated_at`
+- 当前有效 `follower_node_bindings.updated_at`
+- `mirror_configs.updated_at`
+
+推荐 SQL：
+
+```sql
+GREATEST(
+  u.updated_at,
+  COALESCE(up.updated_at, u.updated_at),
+  COALESCE(al.updated_at, u.updated_at),
+  COALESCE(fnb.updated_at, u.updated_at),
+  COALESCE(mc.updated_at, u.updated_at)
+) AS updated_at
+```
+
+### 3.8 推荐查询骨架
+
+```sql
+WITH candidate_users AS (
+  SELECT user_id FROM public.user_lobster_profiles
+  UNION
+  SELECT portal_user_id AS user_id FROM public.account_links
+  UNION
+  SELECT user_id FROM public.follower_node_bindings
+  UNION
+  SELECT user_id FROM public.mirror_configs
+)
+SELECT
+  u.external_user_id AS user_id,
+  COALESCE(al.link_status, 'UNLINKED') AS account_status,
+  CASE
+    WHEN mc.user_id IS NULL THEN 'UNCONFIGURED'
+    WHEN mc.enabled = false THEN 'DISABLED'
+    WHEN mc.risk_circuit_open = true THEN 'RISK_HOLD'
+    WHEN mc.stop_pending_settlement = true THEN 'STOPPING'
+    WHEN mc.enabled = true THEN 'RUNNING'
+    ELSE 'UNKNOWN'
+  END AS strategy_status,
+  COALESCE(fnb.status, 'UNBOUND') AS binding_status,
+  COALESCE(
+    up.meta_json ->> 'responsibilityDomain',
+    up.meta_json ->> 'ownerDomain',
+    NULLIF(BTRIM(al.meta_json), '')::jsonb ->> 'responsibilityDomain',
+    NULLIF(BTRIM(al.meta_json), '')::jsonb ->> 'ownerDomain'
+  ) AS responsibility_domain,
+  GREATEST(
+    u.updated_at,
+    COALESCE(up.updated_at, u.updated_at),
+    COALESCE(al.updated_at, u.updated_at),
+    COALESCE(fnb.updated_at, u.updated_at),
+    COALESCE(mc.updated_at, u.updated_at)
+  ) AS updated_at
+FROM candidate_users cu
+JOIN public.users u ON u.id = cu.user_id
+LEFT JOIN public.user_lobster_profiles up ON up.user_id = u.id
+LEFT JOIN public.account_links al ON al.portal_user_id = u.id
+LEFT JOIN public.follower_node_bindings fnb ON fnb.user_id = u.id
+LEFT JOIN public.mirror_configs mc ON mc.user_id = u.id;
+```
+
+### 3.9 列表响应 Contract
 
 ```json
 {
   "code": 200,
-  "message": "停用成功",
-  "data": null,
+  "message": "查询成功",
+  "data": {
+    "list": [
+      {
+        "userId": "lobster_u_10001",
+        "accountStatus": "LINKED",
+        "strategyStatus": "RUNNING",
+        "bindingStatus": "BOUND",
+        "responsibilityDomain": "cn-east",
+        "updatedAt": "2026-04-01 16:30:00"
+      }
+    ],
+    "total": 1,
+    "pageNum": 1,
+    "pageSize": 20,
+    "pages": 1
+  },
   "timestamp": 1775104225000
 }
 ```
-
-### 3.7 DB Contract Summary
-
-| Table | Create | Update | Delete | Notes |
-| --- | --- | --- | --- | --- |
-| `public.users` | insert | update | `status -> DISABLED` | 主表 |
-| `public.user_lobster_profiles` | insert | update | no-op | 每个用户只应存在一条配置档案 |
-| `public.account_links` | optional insert | update or insert | `link_status -> UNLINKED` | 当前库无 user 维度唯一约束，需按“当前有效账户关联规则”选中目标行 |
-| `public.follower_key_records` | no-op | no-op | no-op | 只读 |
-| `public.follower_node_bindings` | no-op | no-op | no-op | 只读 |
 
 ---
 
@@ -446,39 +322,16 @@ PATCH 采用部分更新，未传字段表示不变：
 | --- | --- | --- | --- | --- |
 | 列表查询 | `pageNum < 1` 或 `pageSize < 1` | `400` | `40001` | 参数校验失败：分页参数非法 |
 | 列表查询 | `pageSize > 100` | `400` | `40001` | 参数校验失败：pageSize 超出上限 |
-| 创建 | `externalUserId` 为空 | `400` | `40001` | 参数校验失败：externalUserId 不能为空 |
-| 创建 | `displayName` 为空 | `400` | `40001` | 参数校验失败：displayName 不能为空 |
-| 创建 | `slotCap < 0` | `400` | `40001` | 参数校验失败：slotCap 不能小于 0 |
-| 创建 | `externalUserId` 重复 | `400` | `40011` | 外部用户 ID 已存在 |
-| 创建 | `accountLink` 存在但 `lobsterUserId` 为空 | `400` | `40001` | 参数校验失败：lobsterUserId 不能为空 |
-| 详情/更新/删除 | `userId` 不存在 | `404` | `404` | 用户不存在 |
-| 更新 | 用户不存在 Lobster 配置档案 | `400` | `40012` | 小龙虾用户配置档案不存在 |
-| 更新 | 状态非法流转 | `400` | `40013` | 状态流转不合法 |
-| 更新 | `slotCap < 0` | `400` | `40001` | 参数校验失败：slotCap 不能小于 0 |
-| 删除 | 用户已是 `DISABLED` | `200` | `200` | 停用成功 |
-| 任意写接口 | 事务内 SQL 失败 | `500` | `500` | 服务器内部错误，请稍后重试 |
+| 列表查询 | `sortBy` 非 `updatedAt` | `400` | `40001` | 参数校验失败：sortBy 非法 |
+| 列表查询 | `sortOrder` 非 `asc/desc` | `400` | `40001` | 参数校验失败：sortOrder 非法 |
+| 列表查询 | `updatedFrom > updatedTo` | `400` | `40001` | 参数校验失败：更新时间范围非法 |
+| 列表查询 | SQL 执行失败 | `500` | `500` | 服务器内部错误，请稍后重试 |
 
-### 4.1 状态流转约束
+允许的筛选枚举：
 
-`users.status` 一期允许的流转：
-
-| from | to | allowed |
-| --- | --- | --- |
-| `ACTIVE` | `DISABLED` | yes |
-| `DISABLED` | `ACTIVE` | yes |
-| `ACTIVE` | `ACTIVE` | yes |
-| `DISABLED` | `DISABLED` | yes |
-
-`account_links.link_status` 一期允许的流转：
-
-| from | to | allowed |
-| --- | --- | --- |
-| `LINKED` | `UNLINKED` | yes |
-| `UNLINKED` | `LINKED` | yes |
-| `LINKED` | `LINKED` | yes |
-| `UNLINKED` | `UNLINKED` | yes |
-
-若现网采用其他枚举，必须在 service 层维护允许流转表，禁止在 handler 中手写分支。
+- `accountStatus`：按现网 `link_status` 值过滤
+- `strategyStatus`：`UNCONFIGURED`、`DISABLED`、`RISK_HOLD`、`STOPPING`、`RUNNING`、`UNKNOWN`
+- `bindingStatus`：按现网绑定状态值过滤，默认兼容 `BOUND`、`ACTIVE`、`UNBOUND`
 
 ---
 
@@ -486,126 +339,70 @@ PATCH 采用部分更新，未传字段表示不变：
 
 ### 5.1 Good Case
 
-场景：创建一个完整的小龙虾用户，包含档案和 Lobster 账户关联。
-
-```json
-{
-  "externalUserId": "lobster_u_10001",
-  "displayName": "张三",
-  "status": "ACTIVE",
-  "preferredChannel": "whatsapp",
-  "locale": "zh-CN",
-  "profile": {
-    "slotCap": 2,
-    "tier": "BASIC",
-    "meta": {}
-  },
-  "accountLink": {
-    "lobsterUserId": "lb_90001",
-    "linkStatus": "LINKED",
-    "meta": {}
-  }
-}
-```
+场景：用户存在 profile、account link、mirror config、binding，全量信息齐全。
 
 预期：
 
-- `users` 插入 1 条
-- `user_lobster_profiles` 插入 1 条
-- `account_links` 插入 1 条
-- 返回完整详情对象
+- `userId` 取 `users.external_user_id`
+- `accountStatus` = 当前有效 `link_status`
+- `strategyStatus` 按派生规则显示 `RUNNING`
+- `bindingStatus` = 当前有效绑定状态
+- `responsibilityDomain` = `meta_json` 中提取结果
+- `updatedAt` = 多表最大更新时间
 
 ### 5.2 Base Case
 
-场景：创建一个最小化小龙虾用户，只建用户和 Lobster 档案，不建账户关联。
-
-```json
-{
-  "externalUserId": "lobster_u_10002",
-  "displayName": "李四",
-  "profile": {
-    "slotCap": 0,
-    "tier": "BASIC",
-    "meta": {}
-  }
-}
-```
+场景：用户只有 `mirror_configs` 记录，没有 `account_links` 和 `follower_node_bindings`。
 
 预期：
 
-- 可以创建成功
-- 详情中的 `accountLink` 返回 `null`
-- 列表中 `lobsterUserId` 返回 `null`
+- 出现在列表中
+- `accountStatus` = `UNLINKED`
+- `strategyStatus` 根据 `mirror_configs` 派生
+- `bindingStatus` = `UNBOUND`
+- `responsibilityDomain` = `null`
 
 ### 5.3 Bad Case
 
-场景：重复创建同一个 `externalUserId`。
-
-```json
-{
-  "externalUserId": "lobster_u_10001",
-  "displayName": "重复用户",
-  "profile": {
-    "slotCap": 1,
-    "tier": "BASIC"
-  }
-}
-```
+场景：同一用户同时存在 `user_lobster_profiles`、`account_links`、`follower_node_bindings`、`mirror_configs` 4 张候选表。
 
 预期：
 
-- 返回 `400`
-- `code = 40011`
-- 不产生任何新数据
+- 列表中该用户只能出现 1 行
+- 必须由 `candidate_users` 的 `UNION` 去重
+- 4 张 1:1 扩展表均允许直接左连接
 
 ### 5.4 Bad Case
 
-场景：更新时传入负数 `slotCap`。
-
-```json
-{
-  "profile": {
-    "slotCap": -1
-  }
-}
-```
+场景：`account_links.meta_json` 为空字符串。
 
 预期：
 
-- 返回 `400`
-- `code = 40001`
-- 不更新任何表
+- 查询不能因为 `::jsonb` 强转失败而报错
+- `responsibilityDomain` 正常返回 `null`
 
 ---
 
 ### 6. Tests Required
 
-### 6.1 Handler Tests
+### 6.1 Query Tests
 
-- 列表接口参数绑定失败时返回统一错误响应
-- 创建接口缺少必填字段时返回 `40001`
-- PATCH 接口未传字段时不报错
+- 列表必须对候选用户去重，不能因为用户同时存在于多张候选表而重复返回
+- 列表必须能查出只有 `mirror_configs` 的用户
+- 列表必须能查出只有 `follower_node_bindings` 的用户
+- `updatedAt` 必须取多表最大值
 
-### 6.2 Service Tests
+### 6.2 Mapping Tests
 
-- 创建成功时必须同时写入 `users` 和 `user_lobster_profiles`
-- 创建时若 `account_links` 写入失败，事务必须整体回滚
-- 更新时若 `accountLink` 不存在且请求带该对象，必须自动补建
-- 删除时必须同时更新 `users.status` 与当前有效 `account_links.link_status`
-- 删除已停用用户时应幂等成功
+- `userId` 必须返回 `users.external_user_id`，不是内部 `users.id`
+- `accountStatus` 无记录时返回 `UNLINKED`
+- `bindingStatus` 无记录时返回 `UNBOUND`
+- `responsibilityDomain` 按优先级提取
 
-### 6.3 Repository / Query Tests
+### 6.3 Assertion Points
 
-- 列表查询必须去重，不能因为 `account_links` 多条导致同一用户出现多行
-- 列表查询必须能查出“只有 follower key、没有 profile/accountLink”的用户
-- 详情查询必须只返回当前有效账户关联，而不是所有 `account_links` 混在主对象里
-- `activeKeyCount` 和 `activeBindingCount` 必须按状态集统计
-
-### 6.4 Assertion Points
-
-- 成功响应顶层字段必须包含 `code`、`message`、`data`、`timestamp`
-- 列表响应 `data` 必须包含 `list`、`total`、`pageNum`、`pageSize`、`pages`
-- 所有时间字符串字段必须统一格式
+- 顶层响应必须包含 `code`、`message`、`data`、`timestamp`
+- 分页响应必须包含 `list`、`total`、`pageNum`、`pageSize`、`pages`
 - JSON 字段命名必须使用小驼峰
 
 ---
@@ -615,93 +412,83 @@ PATCH 采用部分更新，未传字段表示不变：
 #### Wrong
 
 ```sql
-SELECT *
+SELECT
+  u.external_user_id AS user_id,
+  al.link_status,
+  fnb.status
 FROM public.users u
 LEFT JOIN public.account_links al ON al.portal_user_id = u.id
-LEFT JOIN public.user_lobster_profiles up ON up.user_id = u.id
-WHERE up.user_id IS NOT NULL OR al.portal_user_id IS NOT NULL;
+LEFT JOIN public.follower_node_bindings fnb ON fnb.user_id = u.id;
 ```
 
 问题：
 
-- 若同一用户有多条 `account_links`，会出现重复行
-- 只能查到有 profile 或 accountLink 的用户，漏掉只有 key / binding 的用户
+- 会扫出不属于小龙虾候选集合的普通用户
+- 没有策略状态
+- 没有责任域提取
+- 更新时间不准确
 
 #### Correct
 
 ```sql
-WITH candidate_users AS (
-  SELECT user_id FROM public.user_lobster_profiles
-  UNION
-  SELECT portal_user_id AS user_id FROM public.account_links
-  UNION
-  SELECT user_id FROM public.follower_key_records
-  UNION
-  SELECT user_id FROM public.follower_node_bindings
-),
-current_account_link AS (
-  SELECT *
-  FROM (
-    SELECT
-      al.*,
-      ROW_NUMBER() OVER (
-        PARTITION BY al.portal_user_id
-        ORDER BY
-          CASE WHEN al.link_status = 'LINKED' THEN 0 ELSE 1 END,
-          al.updated_at DESC,
-          al.id DESC
-      ) AS rn
-    FROM public.account_links al
-  ) t
-  WHERE t.rn = 1
-)
-SELECT ...
+WITH candidate_users AS (...)
+SELECT
+  u.external_user_id AS user_id,
+  COALESCE(al.link_status, 'UNLINKED') AS account_status,
+  CASE ... END AS strategy_status,
+  COALESCE(fnb.status, 'UNBOUND') AS binding_status,
+  COALESCE(...) AS responsibility_domain,
+  GREATEST(...) AS updated_at
 FROM candidate_users cu
 JOIN public.users u ON u.id = cu.user_id
-LEFT JOIN current_account_link cal ON cal.portal_user_id = u.id
-LEFT JOIN public.user_lobster_profiles up ON up.user_id = u.id;
-```
-
-#### Wrong
-
-```go
-// 在 follower user PATCH 中直接改 follower_key_records 和 follower_node_bindings
-```
-
-问题：
-
-- 写入边界失控
-- 该模块与 key / binding 流程耦合
-- 历史数据容易被错误覆盖
-
-#### Correct
-
-```go
-// 该模块只写 users / user_lobster_profiles / account_links
-// follower_key_records / follower_node_bindings 仅用于只读聚合展示
+LEFT JOIN public.user_lobster_profiles up ON up.user_id = u.id
+LEFT JOIN public.account_links al ON al.portal_user_id = u.id
+LEFT JOIN public.follower_node_bindings fnb ON fnb.user_id = u.id
+LEFT JOIN public.mirror_configs mc ON mc.user_id = u.id;
 ```
 
 ---
 
-## Design Decision: account_links 不做 user 维度硬唯一
+## Design Decision: 用户ID固定显示 external_user_id
 
-**Context**：当前 `public.account_links` 仅有主键和普通索引，没有 `portal_user_id` 唯一约束。
+**Context**：`users` 同时有内部自增主键 `id` 和业务侧 `external_user_id`。
 
-**Decision**：一期实现不新增数据库唯一约束，也不在本模块中清洗历史数据，而是通过“当前有效账户关联选择规则”稳定读取 1 条记录。
+**Decision**：小龙虾列表页中的“用户ID”固定显示 `users.external_user_id`。
 
 **Why**：
 
-- 避免在现有脏数据场景下强推 schema 变更
-- 先保证列表与详情结果稳定
-- 后续如业务确认“一人一 Lobster 账户”后，再补唯一约束和数据清洗任务
+- 更符合运营识别习惯
+- 与外部系统对账更方便
+- `external_user_id` 当前有唯一索引且非空
 
-## Common Mistake: 把所有 users 都当成小龙虾用户
+## Design Decision: 账户状态固定映射 account_links.link_status
 
-**Symptom**：列表数量远大于运营预期，且大量用户没有任何 Lobster 信息。
+**Context**：`public.users.status` 和 `public.account_links.link_status` 都可能被误解成“账户状态”。
 
-**Cause**：查询时直接以 `users` 为主表全量扫描，没有使用候选用户集合。
+**Decision**：小龙虾列表页中的 `accountStatus` 固定映射 `public.account_links.link_status`，不映射 `public.users.status`。
 
-**Fix**：必须先构造 `candidate_users`，再回查 `users` 主档。
+**Why**：
 
-**Prevention**：将候选用户 CTE 封装为统一查询片段，不允许在多个查询里重复手写不同版本。
+- 当前列表核心目标是看小龙虾接入经营状态，而不是看后台主档是否启停
+- 列表已经有 `strategyStatus` 与 `bindingStatus`，配套显示 Lobster 账户关联状态更完整
+- `users.status` 若后续需要展示，应以新字段名 `userStatus` 单独增加，避免语义冲突
 
+## Common Mistake: 把 users.status 当 accountStatus
+
+**Symptom**：接口返回的 `accountStatus` 为 `ACTIVE` / `DISABLED`，与运营预期的 `LINKED` / `UNLINKED` 不一致。
+
+**Cause**：把 `public.users.status` 误当作列表展示的账户状态。
+
+**Fix**：`accountStatus` 固定读取 `public.account_links.link_status`；无记录时返回 `UNLINKED`。
+
+**Prevention**：DTO 中显式区分 `accountStatus` 与未来可能新增的 `userStatus`，不要复用同一个字段名。
+
+## Common Mistake: 把责任域当结构化列直接查询
+
+**Symptom**：SQL 直接写 `up.responsibility_domain`，上线后报字段不存在。
+
+**Cause**：当前数据库没有独立责任域列，责任域只能从 `meta_json` 提取。
+
+**Fix**：按“责任域提取规则”从 `user_lobster_profiles.meta_json` 和 `account_links.meta_json` 中读取。
+
+**Prevention**：后端 DTO 中把责任域定义成派生字段，不要映射成实体固定列。
