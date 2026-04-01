@@ -1,0 +1,8 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "接入 Gorm 与 PostgreSQL 初始化能力"}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "接入 Zap 与 Lumberjack 日志能力"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "避免重复实现配置和日志初始化逻辑"}
+{"file": "docker-compose.yml", "reason": "复用现有本地 PostgreSQL 默认连接信息"}
+{"file": "docs/operator-system-crud-requirements.md", "reason": "预留 admin 接口分组与后续运营系统需求衔接"}
+{"file": "docker/postgres/init/01-import-schema.sh", "reason": "理解本地 PostgreSQL 初始化约束与导入脚本行为"}

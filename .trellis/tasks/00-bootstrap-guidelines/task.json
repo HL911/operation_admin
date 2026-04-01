@@ -1,0 +1,35 @@
+{
+  "id": "00-bootstrap-guidelines",
+  "name": "补齐开发规范",
+  "description": "为 AI 助手补齐项目开发规范",
+  "status": "in_progress",
+  "dev_type": "docs",
+  "priority": "P1",
+  "creator": "operation_admin",
+  "assignee": "operation_admin",
+  "createdAt": "2026-04-01",
+  "completedAt": null,
+  "commit": null,
+  "subtasks": [
+    {
+      "name": "补齐后端规范",
+      "status": "pending"
+    },
+    {
+      "name": "补齐前端规范",
+      "status": "pending"
+    },
+    {
+      "name": "补充代码示例",
+      "status": "pending"
+    }
+  ],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    ".trellis/spec/backend/",
+    ".trellis/spec/frontend/"
+  ],
+  "notes": "由 trellis init 创建的首次引导任务（全栈项目）",
+  "meta": {}
+}

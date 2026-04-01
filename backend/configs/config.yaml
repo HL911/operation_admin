@@ -1,0 +1,55 @@
+# app: 应用级配置，用于日志、健康检查和服务标识。
+app:
+  # name: 服务名称，默认值为 operation-admin-backend。
+  name: operation-admin-backend
+
+# server: HTTP 服务监听和超时配置。
+server:
+  # host: 服务监听地址，默认监听全部网卡。
+  host: 0.0.0.0
+  # port: 服务监听端口，默认值为 8080。
+  port: 8081
+  # mode: Gin 运行模式，可选 debug、release、test，默认使用 debug。
+  mode: debug
+  # read_timeout: 单次请求读取超时，单位为 Go duration 字符串。
+  read_timeout: 10s
+  # write_timeout: 单次响应写出超时，单位为 Go duration 字符串。
+  write_timeout: 15s
+  # shutdown_timeout: 优雅停机等待时间，单位为 Go duration 字符串。
+  shutdown_timeout: 10s
+
+# database: PostgreSQL 连接与连接池配置，需要和根目录 docker compose 保持一致。
+database:
+  # host: PostgreSQL 主机地址，默认值为 127.0.0.1。
+  host: 127.0.0.1
+  # port: PostgreSQL 端口，默认值为 15432。
+  port: 15432
+  # user: PostgreSQL 用户名，默认值为 postgres。
+  user: postgres
+  # password: PostgreSQL 密码，默认值为 postgres，生产环境需要替换。
+  password: postgres
+  # dbname: 默认连接的数据库名称，默认值为 pincermarket。
+  dbname: pincermarket
+  # sslmode: PostgreSQL SSL 模式，开发环境默认关闭。
+  sslmode: disable
+  # max_idle_conns: 连接池最大空闲连接数，默认值为 5。
+  max_idle_conns: 5
+  # max_open_conns: 连接池最大打开连接数，默认值为 20。
+  max_open_conns: 20
+  # conn_max_lifetime: 单条连接最大存活时长，单位为 Go duration 字符串。
+  conn_max_lifetime: 30m
+
+# log: 日志输出与滚动切割配置。
+log:
+  # level: 日志级别，可选 debug、info、warn、error，默认值为 info。
+  level: info
+  # filename: 滚动日志文件路径，相对路径会基于 backend 根目录解析。
+  filename: logs/app.log
+  # max_size_mb: 单个日志文件切割前的最大体积，单位为 MB。
+  max_size_mb: 20
+  # max_backups: 保留的历史日志文件数量。
+  max_backups: 5
+  # max_age_days: 历史日志文件保留天数，单位为天。
+  max_age_days: 14
+  # compress: 是否压缩历史日志文件，默认值为 false。
+  compress: false

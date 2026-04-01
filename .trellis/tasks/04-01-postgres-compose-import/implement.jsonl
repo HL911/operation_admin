@@ -1,0 +1,5 @@
+{"file": ".trellis/workflow.md", "reason": "项目工作流与约定"}
+{"file": ".trellis/spec/backend/index.md", "reason": "后端开发规范索引"}
+{"file": ".trellis/tasks/04-01-postgres-compose-import/prd.md", "reason": "任务需求与验收标准"}
+{"file": "AGENTS.md", "reason": "工作区特定操作说明"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "与 PostgreSQL 搭建相关的数据库规范"}

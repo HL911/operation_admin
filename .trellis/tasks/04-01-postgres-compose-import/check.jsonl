@@ -1,0 +1,5 @@
+{"file": ".agents/skills/finish-work/SKILL.md", "reason": "收尾检查清单"}
+{"file": ".agents/skills/check-backend/SKILL.md", "reason": "后端检查规范"}
+{"file": ".trellis/tasks/04-01-postgres-compose-import/prd.md", "reason": "对照任务需求与验收标准检查"}
+{"file": "AGENTS.md", "reason": "工作区特定操作说明"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "与 PostgreSQL 搭建相关的数据库规范"}

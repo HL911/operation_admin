@@ -1,0 +1,8 @@
+{"file": ".agents/skills/finish-work/SKILL.md", "reason": "Finish work checklist"}
+{"file": ".agents/skills/check-backend/SKILL.md", "reason": "Backend check spec"}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "检查 backend 目录结构是否保持清晰"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "检查数据库初始化与配置是否一致"}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "检查日志配置与输出方式"}
+{"file": "docs/operator-system-crud-requirements.md", "reason": "预留后台管理接口前缀与后续 CRUD 需求一致"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "检查中文文档与注释完整性"}
+{"file": "docker-compose.yml", "reason": "校验默认数据库连接契约与本地环境一致"}
