@@ -1,6 +1,13 @@
 import type { ComponentType } from "react";
 import Link from "next/link";
-import { LayoutDashboard, ListFilter, NotebookPen, ScanSearch, Workflow } from "lucide-react";
+import {
+  LayoutDashboard,
+  ListFilter,
+  NotebookPen,
+  ScanSearch,
+  Users,
+  Workflow,
+} from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { AdminNavigationItem } from "@/features/admin/config/dashboard-content";
 import { cn } from "@/lib/utils";
@@ -18,6 +25,7 @@ export interface AdminSidebarProps {
 // navigationIconMap 用于把配置中的导航键映射到固定图标。
 const navigationIconMap = {
   overview: LayoutDashboard,
+  "follower-users": Users,
   "table-shell": ListFilter,
   "detail-shell": ScanSearch,
   "form-shell": NotebookPen,

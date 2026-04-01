@@ -11,6 +11,7 @@ import (
 
 	"operation_admin/backend/internal/config"
 	"operation_admin/backend/internal/database"
+	"operation_admin/backend/internal/followeruser"
 	"operation_admin/backend/internal/http/handler"
 	"operation_admin/backend/internal/http/router"
 	"operation_admin/backend/internal/logger"
@@ -57,8 +58,21 @@ func New(configPath string) (*Application, error) {
 	// healthHandler 提供服务存活检查接口。
 	healthHandler := handler.NewHealthHandler(loadedConfig.App.Name)
 
+	// followerUserRepository 提供小龙虾用户模块所需的 Gorm 数据访问能力。
+	followerUserRepository := followeruser.NewRepository(gormDB)
+	if err := followerUserRepository.EnsureSchema(context.Background()); err != nil {
+		_ = logger.Sync(zapLogger)
+		return nil, fmt.Errorf("初始化小龙虾用户表失败: %w", err)
+	}
+
+	// followerUserService 提供小龙虾用户 CRUD 业务能力。
+	followerUserService := followeruser.NewService(followerUserRepository)
+
+	// followerUserHandler 负责处理小龙虾用户 HTTP 请求。
+	followerUserHandler := handler.NewFollowerUserHandler(followerUserService, zapLogger)
+
 	// engine 负责承载 Gin 路由与中间件链。
-	engine := router.New(loadedConfig.Server, zapLogger, healthHandler)
+	engine := router.New(loadedConfig.Server, zapLogger, healthHandler, followerUserHandler)
 
 	// httpServer 是实际对外监听端口的标准库服务对象。
 	httpServer := &http.Server{

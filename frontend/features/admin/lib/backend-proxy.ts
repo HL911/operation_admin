@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getRequiredServerEnv } from "@/lib/server-env";
 
 /**
  * ForwardAdminRequestInput 描述代理调用所需的最小输入。
@@ -10,8 +11,8 @@ export interface ForwardAdminRequestInput {
   segments?: readonly string[];
 }
 
-// DEFAULT_BACKEND_BASE_URL 用于在未显式提供环境变量时回退到本地后端。
-const DEFAULT_BACKEND_BASE_URL = "http://127.0.0.1:8080";
+// BACKEND_BASE_URL_ENV_KEY 表示后端代理基址对应的环境变量名。
+const BACKEND_BASE_URL_ENV_KEY = "BACKEND_BASE_URL";
 
 // BODY_METHODS 描述需要读取并透传请求体的 HTTP 方法集合。
 const BODY_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -36,7 +37,10 @@ const HOP_BY_HOP_HEADERS = new Set([
  */
 export function resolveBackendBaseUrl(): string {
   // configuredBaseUrl 表示环境变量中声明的后端地址。
-  const configuredBaseUrl = process.env.BACKEND_BASE_URL?.trim() || DEFAULT_BACKEND_BASE_URL;
+  const configuredBaseUrl = getRequiredServerEnv(BACKEND_BASE_URL_ENV_KEY, {
+    example: "http://127.0.0.1:8081",
+    location: "frontend/.env.local",
+  });
 
   return new URL(configuredBaseUrl).toString();
 }

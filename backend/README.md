@@ -18,6 +18,7 @@ backend/
 ├── internal/app               # 应用装配与生命周期管理
 ├── internal/config            # 配置加载与配置契约
 ├── internal/database          # Gorm / PostgreSQL 初始化
+├── internal/followeruser      # 小龙虾用户 Gorm 模型、仓储与服务
 ├── internal/http
 │   ├── handler                # HTTP 处理器
 │   ├── response               # Sonic JSON 响应封装
@@ -32,6 +33,7 @@ backend/
 
 - 提供 `GET /healthz` 健康检查接口
 - 预留 `GET /admin/v1/healthz` 作为后台管理接口分组示例
+- 提供 `/admin/v1/follower-users` 的 Gorm CRUD 示例实现
 - 启动时自动读取配置并初始化日志、数据库与 HTTP 服务
 - 支持通过环境变量覆盖配置文件中的字段
 - 日志默认同时输出到控制台与 `backend/logs/app.log`

@@ -1,0 +1,5 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "复用统一响应组件与错误码约定"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "遵守注释与统一响应规范"}
+{"file": "docs/operator-system-crud-requirements.md", "reason": "沿用 admin/v1 接口分组与后台 CRUD 约定"}

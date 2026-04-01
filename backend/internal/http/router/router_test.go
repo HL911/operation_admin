@@ -20,7 +20,7 @@ func TestHealthRoutes(t *testing.T) {
 	}
 
 	// engine 是本次测试实际承载请求的 Gin 引擎。
-	engine := New(serverConfig, zap.NewNop(), handler.NewHealthHandler("test-backend"))
+	engine := New(serverConfig, zap.NewNop(), handler.NewHealthHandler("test-backend"), nil)
 
 	// request 构造了一次对健康检查接口的模拟访问。
 	request := httptest.NewRequest(http.MethodGet, "/healthz", nil)

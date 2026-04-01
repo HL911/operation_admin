@@ -12,7 +12,12 @@ import (
 )
 
 // New 负责注册 Gin 路由、中间件与基础健康检查接口。
-func New(cfg config.ServerConfig, logger *zap.Logger, healthHandler *handler.HealthHandler) *gin.Engine {
+func New(
+	cfg config.ServerConfig,
+	logger *zap.Logger,
+	healthHandler *handler.HealthHandler,
+	followerUserHandler *handler.FollowerUserHandler,
+) *gin.Engine {
 	gin.SetMode(normalizeGinMode(cfg.Mode))
 
 	// engine 是当前应用的根路由引擎。
@@ -22,6 +27,10 @@ func New(cfg config.ServerConfig, logger *zap.Logger, healthHandler *handler.Hea
 	// adminGroup 预留后台管理接口的统一分组前缀。
 	adminGroup := engine.Group("/admin/v1")
 	adminGroup.GET("/healthz", healthHandler.Check)
+
+	if followerUserHandler != nil {
+		followerUserHandler.RegisterRoutes(adminGroup)
+	}
 
 	engine.NoRoute(func(ctx *gin.Context) {
 		response.NotFound(ctx, "")

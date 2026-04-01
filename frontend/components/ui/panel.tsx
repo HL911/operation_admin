@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
  * PanelProps 描述通用信息面板的输入属性。
  */
 export interface PanelProps {
+  /** id 允许调用方为面板提供锚点定位用的 DOM 标识。 */
+  id?: string;
   /** title 表示面板主标题。 */
   title: string;
   /** description 用于补充该面板承担的业务说明。 */
@@ -28,10 +30,12 @@ export function Panel({
   className,
   description,
   eyebrow,
+  id,
   title,
 }: PanelProps): React.JSX.Element {
   return (
     <section
+      id={id}
       className={cn(
         "fade-enter rounded-[28px] border border-border bg-surface px-5 py-5 shadow-[var(--shadow)] backdrop-blur-xl sm:px-6",
         className,

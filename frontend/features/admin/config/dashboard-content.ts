@@ -3,7 +3,13 @@
  */
 export interface AdminNavigationItem {
   /** key 用于为导航项提供稳定的 React 键值。 */
-  key: "overview" | "table-shell" | "detail-shell" | "form-shell" | "v0-playbook";
+  key:
+    | "overview"
+    | "follower-users"
+    | "table-shell"
+    | "detail-shell"
+    | "form-shell"
+    | "v0-playbook";
   /** label 表示导航项在界面上的中文标题。 */
   label: string;
   /** href 指定导航项跳转或锚点定位的目标地址。 */
@@ -155,6 +161,13 @@ export const adminNavigationItems: readonly AdminNavigationItem[] = [
     label: "总览",
     href: "/",
     description: "查看后台骨架、代理入口与当前准备度。",
+    status: "ready",
+  },
+  {
+    key: "follower-users",
+    label: "小龙虾用户",
+    href: "/follower-users",
+    description: "进入基于接口文档实现的小龙虾用户 CRUD 页面。",
     status: "ready",
   },
   {
@@ -332,8 +345,9 @@ export const adminDetailSections: readonly AdminDetailSection[] = [
         value: "/api/admin/*",
       },
       {
-        label: "默认后端",
-        value: "http://127.0.0.1:8080",
+        label: "后端配置",
+        value: "读取 BACKEND_BASE_URL",
+        hint: "在 `frontend/.env.local` 中配置，例如 `http://127.0.0.1:8081`。",
       },
       {
         label: "异常策略",
