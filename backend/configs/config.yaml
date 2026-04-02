@@ -39,6 +39,17 @@ database:
   # conn_max_lifetime: 单条连接最大存活时长，单位为 Go duration 字符串。
   conn_max_lifetime: 30m
 
+# auth: 后台开发者鉴权配置，负责 JWT 签发和 Refresh Token 生命周期控制。
+auth:
+  # issuer: JWT 签发方标识，默认值为 operation-admin-backend。
+  issuer: operation-admin-backend
+  # jwt_secret: HS256 签名密钥，开发环境也必须至少 32 个字符，生产环境必须替换为安全随机值。
+  jwt_secret: dev-change-me-please-use-a-strong-secret
+  # access_token_ttl: Access Token 有效期，默认值为 2h，单位为 Go duration 字符串。
+  access_token_ttl: 2h
+  # refresh_token_ttl: Refresh Token 有效期，默认值为 168h（7 天），单位为 Go duration 字符串。
+  refresh_token_ttl: 168h
+
 # log: 日志输出与滚动切割配置。
 log:
   # level: 日志级别，可选 debug、info、warn、error，默认值为 info。

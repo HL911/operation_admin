@@ -9,10 +9,12 @@ import (
 	"syscall"
 	"time"
 
+	"operation_admin/backend/internal/adminauth"
 	"operation_admin/backend/internal/config"
 	"operation_admin/backend/internal/database"
 	"operation_admin/backend/internal/followeruser"
 	"operation_admin/backend/internal/http/handler"
+	"operation_admin/backend/internal/http/middleware"
 	"operation_admin/backend/internal/http/router"
 	"operation_admin/backend/internal/logger"
 
@@ -58,6 +60,28 @@ func New(configPath string) (*Application, error) {
 	// healthHandler 提供服务存活检查接口。
 	healthHandler := handler.NewHealthHandler(loadedConfig.App.Name)
 
+	// tokenManager 提供后台开发者 JWT 与 Refresh Token 的签发和校验能力。
+	tokenManager := adminauth.NewTokenManager(loadedConfig.Auth)
+
+	// adminAuthRepository 提供后台开发者鉴权模块所需的 Gorm 数据访问能力。
+	adminAuthRepository := adminauth.NewRepository(gormDB)
+	if err := adminAuthRepository.EnsureSchema(context.Background()); err != nil {
+		_ = logger.Sync(zapLogger)
+		return nil, fmt.Errorf("初始化后台鉴权表失败: %w", err)
+	}
+
+	// adminAuthService 提供后台开发者登录、刷新、登出和管理员建号业务能力。
+	adminAuthService := adminauth.NewService(adminAuthRepository, tokenManager)
+
+	// adminAuthMiddleware 负责保护后台受限接口并注入当前后台账号上下文。
+	adminAuthMiddleware := middleware.NewAdminAuthMiddleware(adminAuthService, zapLogger)
+
+	// authHandler 负责处理后台开发者登录、刷新、登出和当前用户接口。
+	authHandler := handler.NewAuthHandler(adminAuthService, zapLogger)
+
+	// adminUserHandler 负责处理管理员创建后台开发者账号接口。
+	adminUserHandler := handler.NewAdminUserHandler(adminAuthService, zapLogger)
+
 	// followerUserRepository 提供小龙虾用户模块所需的 Gorm 数据访问能力。
 	followerUserRepository := followeruser.NewRepository(gormDB)
 	if err := followerUserRepository.EnsureSchema(context.Background()); err != nil {
@@ -72,7 +96,15 @@ func New(configPath string) (*Application, error) {
 	followerUserHandler := handler.NewFollowerUserHandler(followerUserService, zapLogger)
 
 	// engine 负责承载 Gin 路由与中间件链。
-	engine := router.New(loadedConfig.Server, zapLogger, healthHandler, followerUserHandler)
+	engine := router.New(
+		loadedConfig.Server,
+		zapLogger,
+		healthHandler,
+		adminAuthMiddleware,
+		authHandler,
+		adminUserHandler,
+		followerUserHandler,
+	)
 
 	// httpServer 是实际对外监听端口的标准库服务对象。
 	httpServer := &http.Server{

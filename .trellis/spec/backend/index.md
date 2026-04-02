@@ -17,9 +17,10 @@
 | [目录结构](./directory-structure.md) | 模块组织与文件布局 | 待完善 |
 | [数据库规范](./database-guidelines.md) | ORM 模式、查询、迁移 | 待完善 |
 | [错误处理](./error-handling.md) | 错误类型与处理策略 | 已补充 |
+| [后台开发者鉴权规范](./admin-authentication.md) | 后台登录、刷新、登出、当前用户与管理员建号契约 | 已补充 |
 | [小龙虾用户列表规格](./operator-follower-user-crud.md) | 运营后台小龙虾用户列表的接口、库表与校验契约 | 已补充 |
 | [质量规范](./quality-guidelines.md) | 代码标准、禁止模式 | 已补充 |
-| [日志规范](./logging-guidelines.md) | 结构化日志与日志级别 | 待完善 |
+| [日志规范](./logging-guidelines.md) | 结构化日志与日志级别 | 已补充 |
 
 ---
 

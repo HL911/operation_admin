@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // TestResolveConfigPathFromServerDirectory 负责验证从 backend/cmd/server 启动时也能相对定位到配置文件。
@@ -68,5 +69,77 @@ func TestResolveConfigPathFromServerDirectory(t *testing.T) {
 
 	if actualPath != expectedPath {
 		t.Fatalf("期望定位到 %s，实际为 %s", expectedPath, actualPath)
+	}
+}
+
+// TestAuthConfigValidate 负责验证鉴权配置的关键安全约束会被正确校验。
+func TestAuthConfigValidate(t *testing.T) {
+	// testCases 保存当前测试要覆盖的鉴权配置校验场景。
+	testCases := []struct {
+		// Name 表示当前子测试的名称。
+		Name string
+		// Config 表示待校验的鉴权配置。
+		Config AuthConfig
+		// WantErr 表示当前场景是否期望返回校验错误。
+		WantErr bool
+	}{
+		{
+			Name: "合法配置可以通过校验",
+			Config: AuthConfig{
+				Issuer:          "operation-admin-backend",
+				JWTSecret:       "abcdefghijklmnopqrstuvwxyz123456",
+				AccessTokenTTL:  2 * time.Hour,
+				RefreshTokenTTL: 168 * time.Hour,
+			},
+			WantErr: false,
+		},
+		{
+			Name: "密钥过短会被拒绝",
+			Config: AuthConfig{
+				Issuer:          "operation-admin-backend",
+				JWTSecret:       "short-secret",
+				AccessTokenTTL:  2 * time.Hour,
+				RefreshTokenTTL: 168 * time.Hour,
+			},
+			WantErr: true,
+		},
+		{
+			Name: "AccessTokenTTL 必须大于零",
+			Config: AuthConfig{
+				Issuer:          "operation-admin-backend",
+				JWTSecret:       "abcdefghijklmnopqrstuvwxyz123456",
+				AccessTokenTTL:  0,
+				RefreshTokenTTL: 168 * time.Hour,
+			},
+			WantErr: true,
+		},
+		{
+			Name: "RefreshTokenTTL 必须大于零",
+			Config: AuthConfig{
+				Issuer:          "operation-admin-backend",
+				JWTSecret:       "abcdefghijklmnopqrstuvwxyz123456",
+				AccessTokenTTL:  2 * time.Hour,
+				RefreshTokenTTL: 0,
+			},
+			WantErr: true,
+		},
+	}
+
+	for _, testCase := range testCases {
+		// testCase 保存当前循环内执行的测试用例副本，避免闭包引用同一地址。
+		testCase := testCase
+
+		t.Run(testCase.Name, func(t *testing.T) {
+			// err 保存本次鉴权配置校验返回的结果。
+			err := testCase.Config.Validate()
+
+			if testCase.WantErr && err == nil {
+				t.Fatalf("期望返回校验错误，但实际为 nil")
+			}
+
+			if !testCase.WantErr && err != nil {
+				t.Fatalf("期望校验通过，但返回错误: %v", err)
+			}
+		})
 	}
 }

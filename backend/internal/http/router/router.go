@@ -5,6 +5,7 @@ import (
 
 	"operation_admin/backend/internal/config"
 	"operation_admin/backend/internal/http/handler"
+	"operation_admin/backend/internal/http/middleware"
 	"operation_admin/backend/internal/http/response"
 
 	"github.com/gin-gonic/gin"
@@ -16,6 +17,9 @@ func New(
 	cfg config.ServerConfig,
 	logger *zap.Logger,
 	healthHandler *handler.HealthHandler,
+	authMiddleware *middleware.AdminAuthMiddleware,
+	authHandler *handler.AuthHandler,
+	adminUserHandler *handler.AdminUserHandler,
 	followerUserHandler *handler.FollowerUserHandler,
 ) *gin.Engine {
 	gin.SetMode(normalizeGinMode(cfg.Mode))
@@ -24,12 +28,30 @@ func New(
 	engine := gin.New()
 	engine.GET("/healthz", healthHandler.Check)
 
-	// adminGroup 预留后台管理接口的统一分组前缀。
-	adminGroup := engine.Group("/admin/v1")
-	adminGroup.GET("/healthz", healthHandler.Check)
+	// publicAdminGroup 负责承载无需登录即可访问的后台接口。
+	publicAdminGroup := engine.Group("/admin/v1")
+	publicAdminGroup.GET("/healthz", healthHandler.Check)
+
+	if authHandler != nil {
+		authHandler.RegisterPublicRoutes(publicAdminGroup)
+	}
+
+	// protectedAdminGroup 负责承载必须通过 Access Token 鉴权的后台接口。
+	protectedAdminGroup := engine.Group("/admin/v1")
+	if authMiddleware != nil {
+		protectedAdminGroup.Use(authMiddleware.RequireAccessToken())
+	}
+
+	if authHandler != nil {
+		authHandler.RegisterProtectedRoutes(protectedAdminGroup)
+	}
+
+	if adminUserHandler != nil {
+		adminUserHandler.RegisterRoutes(protectedAdminGroup)
+	}
 
 	if followerUserHandler != nil {
-		followerUserHandler.RegisterRoutes(adminGroup)
+		followerUserHandler.RegisterRoutes(protectedAdminGroup)
 	}
 
 	engine.NoRoute(func(ctx *gin.Context) {

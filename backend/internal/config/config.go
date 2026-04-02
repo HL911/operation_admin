@@ -20,6 +20,8 @@ type Config struct {
 	Server ServerConfig `mapstructure:"server"`
 	// Database 描述 PostgreSQL 连接地址、凭证与连接池限制。
 	Database DatabaseConfig `mapstructure:"database"`
+	// Auth 描述后台开发者鉴权使用的 JWT 与 Refresh Token 配置。
+	Auth AuthConfig `mapstructure:"auth"`
 	// Log 描述日志级别、输出路径与文件滚动策略。
 	Log LogConfig `mapstructure:"log"`
 }
@@ -66,6 +68,18 @@ type DatabaseConfig struct {
 	MaxOpenConns int `mapstructure:"max_open_conns"`
 	// ConnMaxLifetime 指定单条连接在池中的最大存活时长，默认值为 `30m`。
 	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
+}
+
+// AuthConfig 描述后台开发者鉴权配置。
+type AuthConfig struct {
+	// Issuer 指定 JWT 签发方标识，默认值为 `operation-admin-backend`。
+	Issuer string `mapstructure:"issuer"`
+	// JWTSecret 指定 HS256 签名密钥，开发环境也必须至少为 32 个字符。
+	JWTSecret string `mapstructure:"jwt_secret"`
+	// AccessTokenTTL 指定 Access Token 有效期，默认值为 `2h`，单位为 Go duration 字符串。
+	AccessTokenTTL time.Duration `mapstructure:"access_token_ttl"`
+	// RefreshTokenTTL 指定 Refresh Token 有效期，默认值为 `168h`，单位为 Go duration 字符串。
+	RefreshTokenTTL time.Duration `mapstructure:"refresh_token_ttl"`
 }
 
 // LogConfig 描述日志级别与日志落盘策略。
@@ -163,6 +177,10 @@ func (c Config) Validate() error {
 		return err
 	}
 
+	if err := c.Auth.Validate(); err != nil {
+		return err
+	}
+
 	if err := c.Log.Validate(); err != nil {
 		return err
 	}
@@ -253,6 +271,27 @@ func (c DatabaseConfig) Validate() error {
 	return nil
 }
 
+// Validate 负责校验鉴权配置是否满足 JWT 与 Refresh Token 的安全要求。
+func (c AuthConfig) Validate() error {
+	if strings.TrimSpace(c.Issuer) == "" {
+		return errors.New("auth.issuer 不能为空")
+	}
+
+	if len(strings.TrimSpace(c.JWTSecret)) < 32 {
+		return errors.New("auth.jwt_secret 长度不能少于 32 个字符")
+	}
+
+	if c.AccessTokenTTL <= 0 {
+		return fmt.Errorf("auth.access_token_ttl 必须大于 0，当前为 %s", c.AccessTokenTTL)
+	}
+
+	if c.RefreshTokenTTL <= 0 {
+		return fmt.Errorf("auth.refresh_token_ttl 必须大于 0，当前为 %s", c.RefreshTokenTTL)
+	}
+
+	return nil
+}
+
 // Validate 负责校验日志输出级别和滚动策略是否合法。
 func (c LogConfig) Validate() error {
 	if _, err := parseLogLevel(c.Level); err != nil {
@@ -298,6 +337,11 @@ func setDefaults(loader *viper.Viper) {
 	loader.SetDefault("database.max_idle_conns", 5)
 	loader.SetDefault("database.max_open_conns", 20)
 	loader.SetDefault("database.conn_max_lifetime", "30m")
+
+	loader.SetDefault("auth.issuer", "operation-admin-backend")
+	loader.SetDefault("auth.jwt_secret", "dev-change-me-please-use-a-strong-secret")
+	loader.SetDefault("auth.access_token_ttl", "2h")
+	loader.SetDefault("auth.refresh_token_ttl", "168h")
 
 	loader.SetDefault("log.level", "info")
 	loader.SetDefault("log.filename", "logs/app.log")
